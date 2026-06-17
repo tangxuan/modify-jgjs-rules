@@ -16,7 +16,7 @@ from pathlib import Path
 
 # ============ 手动配置区域 ============
 # 配置文件路径
-CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
+CONFIG_PATH = Path("/Users/tangxuan/Documents/jgjs-rules-modify/tests/jgjs.yaml")
 # 新策略组名称
 NEW_GROUP_NAME = "auto-select-no-high-speed"
 # ====================================
