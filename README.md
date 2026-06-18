@@ -20,7 +20,7 @@
 5. **生成策略组** - 创建 `type: url-test` 的自动选择策略组
 6. **插入策略组** - 新策略组插入到 `proxy-groups` 区域
 7. **关联策略组** - 将新策略组添加到 `type: select` 的策略组中，位于「自动选择」之前
-8. **HTTP 共享** - 可选功能，通过 8080 端口 HTTP 共享配置目录
+8. **HTTP 共享** - 可选功能，通过 8080 端口 HTTP 共享配置目录，供手机等客户端下载
 
 ## 使用方法
 
@@ -34,7 +34,7 @@
 CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
 # 新策略组名称
 NEW_GROUP_NAME = "auto-select-no-high-speed"
-# HTTP 共享开关（启用后会在 8080 端口共享配置目录）
+# HTTP 共享开关（启用后会在 8080 端口共享配置目录，供手机等客户端下载）
 ENABLE_HTTP_SHARE = False
 # ====================================
 ```

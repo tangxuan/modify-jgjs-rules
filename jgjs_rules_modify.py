@@ -11,8 +11,8 @@ ClashFX 配置修改工具
 import os
 import re
 import shutil
+import socket
 import sys
-import threading
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -49,14 +49,27 @@ def backup_config(config_path: Path) -> Path | None:
         return project_backup_path
 
 
-def start_http_server(serve_dir: str, port: int = 8080) -> threading.Thread:
-    """在后台线程启动 HTTP 文件服务器"""
+def _get_lan_ip() -> str | None:
+    """获取本机非环回的内网 IP"""
+    for info in socket.getaddrinfo(socket.gethostname(), None):
+        ip = info[4][0]
+        if not ip.startswith("127.") and ":" not in ip:
+            return ip
+    return None
+
+
+def start_http_server(serve_dir: str, port: int = 8080) -> None:
+    """启动 HTTP 文件服务器，供手机等客户端下载配置文件（阻塞，按 Ctrl+C 停止）"""
     os.chdir(serve_dir)
     server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    print(f"HTTP 共享已启动: http://localhost:{port}")
-    return thread
+
+    print("HTTP 共享已启动，可供其他设备下载配置:")
+    print(f"  本机: http://localhost:{port}")
+    lan_ip = _get_lan_ip()
+    if lan_ip:
+        print(f"  内网: http://{lan_ip}:{port}")
+    print("按 Ctrl+C 停止服务器")
+    server.serve_forever()
 
 
 def parse_proxies(content: str) -> list[str]:
@@ -210,11 +223,11 @@ def main() -> int:
 
         print(f"\n策略组 '{NEW_GROUP_NAME}' 已插入到 proxy-groups 区域")
         print(f"配置文件已更新: {CONFIG_PATH}")
+        print("\n完成!")
 
         if ENABLE_HTTP_SHARE:
             start_http_server(str(CONFIG_PATH.parent))
 
-        print("\n完成!")
         return 0
 
     except FileNotFoundError as e:
