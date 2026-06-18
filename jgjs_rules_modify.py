@@ -8,10 +8,13 @@ ClashFX 配置修改工具
 3. 生成自动选择策略组，插入到 proxy-groups 区域
 """
 
+import os
 import re
 import shutil
 import sys
+import threading
 from datetime import datetime
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 # ============ 手动配置区域 ============
@@ -19,6 +22,8 @@ from pathlib import Path
 CONFIG_PATH = Path("/Users/tangxuan/Documents/jgjs-rules-modify/tests/jgjs.yaml")
 # 新策略组名称
 NEW_GROUP_NAME = "auto-select-no-high-speed"
+# HTTP 共享开关（启用后会在 8080 端口共享配置目录）
+ENABLE_HTTP_SHARE = False
 # ====================================
 
 
@@ -42,6 +47,16 @@ def backup_config(config_path: Path) -> Path | None:
         shutil.copy2(config_path, project_backup_path)
         print(f"配置文件已备份到: {project_backup_path}")
         return project_backup_path
+
+
+def start_http_server(serve_dir: str, port: int = 8080) -> threading.Thread:
+    """在后台线程启动 HTTP 文件服务器"""
+    os.chdir(serve_dir)
+    server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    print(f"HTTP 共享已启动: http://localhost:{port}")
+    return thread
 
 
 def parse_proxies(content: str) -> list[str]:
@@ -195,6 +210,10 @@ def main() -> int:
 
         print(f"\n策略组 '{NEW_GROUP_NAME}' 已插入到 proxy-groups 区域")
         print(f"配置文件已更新: {CONFIG_PATH}")
+
+        if ENABLE_HTTP_SHARE:
+            start_http_server(str(CONFIG_PATH.parent))
+
         print("\n完成!")
         return 0
 

@@ -2,6 +2,8 @@
 
 用于自动修改 ClashFX 配置文件，生成过滤高速节点的自动选择策略组。
 
+> **开发规范**：本项目遵循 [vibe_rules](https://github.com/tangxuan/vibe-rules) 开发实践。
+
 ![效果图](效果图.png)
 
 ## 功能
@@ -18,6 +20,7 @@
 5. **生成策略组** - 创建 `type: url-test` 的自动选择策略组
 6. **插入策略组** - 新策略组插入到 `proxy-groups` 区域
 7. **关联策略组** - 将新策略组添加到 `type: select` 的策略组中，位于「自动选择」之前
+8. **HTTP 共享** - 可选功能，通过 8080 端口 HTTP 共享配置目录
 
 ## 使用方法
 
@@ -31,6 +34,8 @@
 CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
 # 新策略组名称
 NEW_GROUP_NAME = "auto-select-no-high-speed"
+# HTTP 共享开关（启用后会在 8080 端口共享配置目录）
+ENABLE_HTTP_SHARE = False
 # ====================================
 ```
 
@@ -45,10 +50,11 @@ python3 jgjs_rules_modify.py
 ```
 jgjs-rules-modify/
 ├── jgjs_rules_modify.py    # 主脚本
+├── README.md               # 项目文档
+├── requirements/           # 需求文档目录
+│   └── http-share.md       # HTTP 共享功能需求
 ├── backups/                # 备份目录（自动生成）
 │   └── jgjs_backup_*.yaml
-├── temp/                   # 临时目录（自动生成，用于规避文件保护）
-│   └── jgjs.yaml
 └── tests/                  # 测试目录
     └── jgjs.yaml           # 测试配置文件
 ```
