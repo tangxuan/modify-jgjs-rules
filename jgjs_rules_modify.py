@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 ClashFX 配置修改工具
 
@@ -19,9 +20,11 @@ from pathlib import Path
 
 # ============ 手动配置区域 ============
 # 配置文件路径
-CONFIG_PATH = Path("/Users/tangxuan/Documents/jgjs-rules-modify/tests/jgjs.yaml")
-# 新策略组名称
-NEW_GROUP_NAME = "auto-select-no-high-speed"
+CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
+# 非高速自动选择策略组名称
+NO_HIGH_SPEED_GROUP_NAME = "auto-select-no-high-speed"
+# 海外节点自动选择策略组名称
+OVERSEAS_GROUP_NAME = "auto-select-overseas"
 # HTTP 共享开关（启用后会在 8080 端口共享配置目录）
 ENABLE_HTTP_SHARE = False
 # ====================================
@@ -41,7 +44,7 @@ def backup_config(config_path: Path) -> Path | None:
         print(f"配置文件已备份到: {backup_path}")
         return backup_path
     except PermissionError:
-        print(f"警告: 无法备份配置文件到同目录，将备份到项目目录")
+        print("警告: 无法备份配置文件到同目录，将备份到项目目录")
         project_backup_path = Path(__file__).parent / "backups" / backup_filename
         project_backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(config_path, project_backup_path)
@@ -89,7 +92,11 @@ def parse_proxies(content: str) -> list[str]:
         if in_proxies_section:
             current_indent = len(line) - len(line.lstrip())
 
-            if current_indent <= indent_level and stripped and not stripped.startswith("#"):
+            if (
+                current_indent <= indent_level
+                and stripped
+                and not stripped.startswith("#")
+            ):
                 break
 
             if stripped.startswith("- name:"):
@@ -110,16 +117,22 @@ def parse_proxies(content: str) -> list[str]:
 
 def filter_valid_proxies(proxies: list[str]) -> list[str]:
     """过滤掉无效节点和 >=5x 速节点"""
-    INVALID_KEYWORDS = ["剩余流量", "距离下次重置", "套餐到期", "线路持续更新", "企业套餐"]
-    INVALID_PREFIXES = ["⚠️", "⚡️", "🔥", "💡", "❌", "✅", "🔔", "📢"]
+    invalid_keywords = [
+        "剩余流量",
+        "距离下次重置",
+        "套餐到期",
+        "线路持续更新",
+        "企业套餐",
+    ]
+    invalid_prefixes = ["⚠️", "⚡️", "🔥", "💡", "❌", "✅", "🔔", "📢"]
 
     filtered = []
     for p in proxies:
-        if any(kw in p for kw in INVALID_KEYWORDS):
+        if any(kw in p for kw in invalid_keywords):
             continue
-        if any(p.startswith(prefix) for prefix in INVALID_PREFIXES):
+        if any(p.startswith(prefix) for prefix in invalid_prefixes):
             continue
-        match = re.search(r'-(\d+)x$', p, re.IGNORECASE)
+        match = re.search(r"-(\d+)x$", p, re.IGNORECASE)
         if match:
             speed = int(match.group(1))
             if speed >= 5:
@@ -128,9 +141,37 @@ def filter_valid_proxies(proxies: list[str]) -> list[str]:
     return filtered
 
 
+def filter_overseas_proxies(proxies: list[str]) -> list[str]:
+    """过滤掉无效节点和中国大陆节点，保留所有海外节点"""
+    invalid_keywords = [
+        "剩余流量",
+        "距离下次重置",
+        "套餐到期",
+        "线路持续更新",
+        "企业套餐",
+    ]
+    invalid_prefixes = ["⚠️", "⚡️", "🔥", "💡", "❌", "✅", "🔔", "📢"]
+    china_keywords = ["🇨🇳", "中国", "内地", "大陆", "国内", "CN", "香港", "深港"]
+
+    filtered = []
+    for p in proxies:
+        if any(kw in p for kw in invalid_keywords):
+            continue
+        if any(p.startswith(prefix) for prefix in invalid_prefixes):
+            continue
+        if any(kw in p for kw in china_keywords):
+            continue
+        filtered.append(p)
+    return filtered
+
+
 def insert_policy_group(content: str, group_name: str, proxies: list[str]) -> str:
     """在 proxy-groups 区域内插入新策略组，并添加到 type: select 的策略组中"""
-    if f"name: {group_name}" in content or f"name: '{group_name}'" in content or f'name: "{group_name}"' in content:
+    if (
+        f"name: {group_name}" in content
+        or f"name: '{group_name}'" in content
+        or f'name: "{group_name}"' in content
+    ):
         print(f"策略组 '{group_name}' 已存在，跳过")
         return content
 
@@ -150,7 +191,11 @@ def insert_policy_group(content: str, group_name: str, proxies: list[str]) -> st
 
         if in_proxy_groups:
             current_indent = len(line) - len(line.lstrip())
-            if current_indent <= indent_level and stripped and not stripped.startswith("#"):
+            if (
+                current_indent <= indent_level
+                and stripped
+                and not stripped.startswith("#")
+            ):
                 insert_index = i
                 break
             if stripped.startswith("- {") and "name:" in stripped:
@@ -162,11 +207,15 @@ def insert_policy_group(content: str, group_name: str, proxies: list[str]) -> st
         insert_index = len(lines)
 
     proxies_yaml = ", ".join([f"'{p}'" for p in proxies])
-    new_group_lines = [
-        "    - { name: " + NEW_GROUP_NAME + ", type: url-test, proxies: [" + proxies_yaml + "], url: 'http://www.gstatic.com/generate_204', interval: 86400 }"
-    ]
+    new_group_line = (
+        "    - { name: "
+        + group_name
+        + ", type: url-test, proxies: ["
+        + proxies_yaml
+        + "], url: 'http://www.gstatic.com/generate_204', interval: 86400 }"
+    )
 
-    lines.insert(insert_index, new_group_lines[0])
+    lines.insert(insert_index, new_group_line)
 
     if select_group_line_index != -1:
         select_group_line = lines[select_group_line_index]
@@ -177,12 +226,18 @@ def insert_policy_group(content: str, group_name: str, proxies: list[str]) -> st
             if match:
                 existing_proxies = match.group(2)
                 if "自动选择" in existing_proxies:
-                    new_proxies = existing_proxies.replace("自动选择", f"{group_name}, 自动选择")
+                    new_proxies = existing_proxies.replace(
+                        "自动选择", f"{group_name}, 自动选择"
+                    )
                 elif existing_proxies:
                     new_proxies = f"{existing_proxies}, {group_name}"
                 else:
                     new_proxies = group_name
-                lines[select_group_line_index] = select_group_line[:match.start(2)] + new_proxies + select_group_line[match.end(2):]
+                lines[select_group_line_index] = (
+                    select_group_line[: match.start(2)]
+                    + new_proxies
+                    + select_group_line[match.end(2) :]
+                )
 
     return "\n".join(lines)
 
@@ -195,7 +250,9 @@ def main() -> int:
         backup_dir = Path(__file__).parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = backup_dir / f"{CONFIG_PATH.stem}_backup_{timestamp}{CONFIG_PATH.suffix}"
+        backup_path = (
+            backup_dir / f"{CONFIG_PATH.stem}_backup_{timestamp}{CONFIG_PATH.suffix}"
+        )
         shutil.copy2(CONFIG_PATH, backup_path)
         print(f"配置文件已备份到: {backup_path}")
 
@@ -205,14 +262,21 @@ def main() -> int:
         all_proxies = parse_proxies(config_content)
         print(f"共发现 {len(all_proxies)} 个节点")
 
-        filtered_proxies = filter_valid_proxies(all_proxies)
-        print(f"过滤后剩余 {len(filtered_proxies)} 个节点")
+        new_content = config_content
 
-        if not filtered_proxies:
-            print("没有找到需要保留的节点，无需生成策略组")
-            return 0
+        no_high_speed_proxies = filter_valid_proxies(all_proxies)
+        print(f"非高速节点: {len(no_high_speed_proxies)} 个")
+        if no_high_speed_proxies:
+            new_content = insert_policy_group(
+                new_content, NO_HIGH_SPEED_GROUP_NAME, no_high_speed_proxies
+            )
 
-        new_content = insert_policy_group(config_content, NEW_GROUP_NAME, filtered_proxies)
+        overseas_proxies = filter_overseas_proxies(all_proxies)
+        print(f"海外节点: {len(overseas_proxies)} 个")
+        if overseas_proxies:
+            new_content = insert_policy_group(
+                new_content, OVERSEAS_GROUP_NAME, overseas_proxies
+            )
 
         if new_content == config_content:
             print("配置文件未发生变更")
@@ -221,7 +285,7 @@ def main() -> int:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             f.write(new_content)
 
-        print(f"\n策略组 '{NEW_GROUP_NAME}' 已插入到 proxy-groups 区域")
+        print(f"\n策略组已插入到 proxy-groups 区域")
         print(f"配置文件已更新: {CONFIG_PATH}")
         print("\n完成!")
 
