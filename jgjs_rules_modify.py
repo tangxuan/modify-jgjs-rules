@@ -25,6 +25,8 @@ CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
 NO_HIGH_SPEED_GROUP_NAME = "auto-select-no-high-speed"
 # 海外节点自动选择策略组名称
 OVERSEAS_GROUP_NAME = "auto-select-overseas"
+# Gemini 访问策略组名称（排除越南节点）
+GEMINI_GROUP_NAME = "auto-select-gemini"
 # HTTP 共享开关（启用后会在 8080 端口共享配置目录）
 ENABLE_HTTP_SHARE = False
 # ====================================
@@ -165,6 +167,33 @@ def filter_overseas_proxies(proxies: list[str]) -> list[str]:
     return filtered
 
 
+def filter_gemini_proxies(proxies: list[str]) -> list[str]:
+    """过滤掉无效节点、中国大陆节点和越南节点，用于 Gemini 访问"""
+    invalid_keywords = [
+        "剩余流量",
+        "距离下次重置",
+        "套餐到期",
+        "线路持续更新",
+        "企业套餐",
+    ]
+    invalid_prefixes = ["⚠️", "⚡️", "🔥", "💡", "❌", "✅", "🔔", "📢"]
+    china_keywords = ["🇨🇳", "中国", "内地", "大陆", "国内", "CN", "香港", "深港"]
+    vietnam_keywords = ["🇻🇳", "越南", "河内", "胡志明"]
+
+    filtered = []
+    for p in proxies:
+        if any(kw in p for kw in invalid_keywords):
+            continue
+        if any(p.startswith(prefix) for prefix in invalid_prefixes):
+            continue
+        if any(kw in p for kw in china_keywords):
+            continue
+        if any(kw in p for kw in vietnam_keywords):
+            continue
+        filtered.append(p)
+    return filtered
+
+
 def insert_policy_group(content: str, group_name: str, proxies: list[str]) -> str:
     """在 proxy-groups 区域内插入新策略组，并添加到 type: select 的策略组中"""
     if (
@@ -276,6 +305,13 @@ def main() -> int:
         if overseas_proxies:
             new_content = insert_policy_group(
                 new_content, OVERSEAS_GROUP_NAME, overseas_proxies
+            )
+
+        gemini_proxies = filter_gemini_proxies(all_proxies)
+        print(f"Gemini 节点: {len(gemini_proxies)} 个")
+        if gemini_proxies:
+            new_content = insert_policy_group(
+                new_content, GEMINI_GROUP_NAME, gemini_proxies
             )
 
         if new_content == config_content:

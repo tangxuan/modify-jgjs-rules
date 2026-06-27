@@ -23,9 +23,10 @@
    - 线路更新提示（如「⚠️线路持续更新，请更新订阅！」）
    - 企业套餐提示（如「⚡️⚡️企业套餐可使用IPLC企业专线！」）
 4. **过滤高速节点** - 排除所有 `-5x` 及以上倍数的节点（如 `-5x`, `-10x`, `-15x`）
-5. **生成策略组** - 创建两个 `type: url-test` 的自动选择策略组：
+5. **生成策略组** - 创建三个 `type: url-test` 的自动选择策略组：
    - `auto-select-no-high-speed`：排除 >=5x 高速节点
    - `auto-select-overseas`：排除中国大陆及香港节点（包含🇨🇳、中国、内地、大陆、国内、CN、香港、深港），保留所有海外节点（包含高速节点）
+   - `auto-select-gemini`：排除中国大陆、香港及越南节点（包含🇻🇳、越南、河内、胡志明），用于 Gemini 访问
 6. **插入策略组** - 新策略组插入到 `proxy-groups` 区域
 7. **关联策略组** - 将新策略组添加到 `type: select` 的策略组中，位于「自动选择」之前
 8. **HTTP 共享** - 可选功能，通过 8080 端口 HTTP 共享配置目录，供手机等客户端下载
@@ -44,6 +45,8 @@ CONFIG_PATH = Path("/Users/tangxuan/.config/clashfx/jgjs.yaml")
 NO_HIGH_SPEED_GROUP_NAME = "auto-select-no-high-speed"
 # 海外节点自动选择策略组名称
 OVERSEAS_GROUP_NAME = "auto-select-overseas"
+# Gemini 访问策略组名称（排除越南节点）
+GEMINI_GROUP_NAME = "auto-select-gemini"
 # HTTP 共享开关（启用后会在 8080 端口共享配置目录，供手机等客户端下载）
 ENABLE_HTTP_SHARE = False
 # ====================================
@@ -62,8 +65,9 @@ jgjs-rules-modify/
 ├── jgjs_rules_modify.py    # 主脚本
 ├── README.md               # 项目文档
 ├── requirements/           # 需求文档目录
-│   ├── http-share.md       # HTTP 共享功能需求
-│   └── overseas-group.md   # 海外节点策略组需求
+│   ├── http-share.md      # HTTP 共享功能需求
+│   ├── overseas-group.md  # 海外节点策略组需求
+│   └── gemini-group.md    # Gemini 策略组需求
 ├── backups/                # 备份目录（自动生成）
 │   └── jgjs_backup_*.yaml
 └── tests/                  # 测试目录
@@ -73,8 +77,9 @@ jgjs-rules-modify/
 ## 约束
 
 - **备份位置**：备份文件保存在项目目录下的 `backups/` 文件夹中
-- **策略组名称**：默认名称为 `auto-select-no-high-speed` 和 `auto-select-overseas`，可在配置区域修改
+- **策略组名称**：默认名称为 `auto-select-no-high-speed`、`auto-select-overseas` 和 `auto-select-gemini`，可在配置区域修改
 - **海外节点定义**：排除包含🇨🇳、中国、内地、大陆、国内、CN、香港、深港等关键词的节点
+- **Gemini 节点定义**：在海外节点基础上，额外排除越南节点（🇻🇳、越南、河内、胡志明）
 
 ## 测试
 
